@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>League of Legends Champions</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #202020, #505050);
+            color: #fff;
+        }
+        header {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 1em;
+            text-align: center;
+            position: relative;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .dropdown-container {
+            position: absolute;
+            top: 1em;
+            right: 1em;
+            display: flex;
+            gap: 1em;
+        }
+        .dropdown-container select {
+            background: #444;
+            color: #fff;
+            border: none;
+            padding: 0.5em;
+            border-radius: 4px;
+        }
+        main {
+            padding: 1em;
+        }
+        .search-section {
+            margin-bottom: 1em;
+            background: #333;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            padding: 1em;
+        }
+        .search-section input {
+            width: calc(100% - 2em);
+            margin: 0.5em 0;
+            padding: 0.5em;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #555;
+            color: #fff;
+        }
+        #results {
+            margin-top: 1em;
+        }
+        #results ul {
+            list-style-type: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1em;
+        }
+        #results li {
+            background: #444;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            padding: 1em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+        #results img {
+            margin-bottom: 1em;
+            border-radius: 50%;
+        }
+        #champion-details {
+            margin-top: 2em;
+            background: #333;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            padding: 1em;
+        }
+        footer {
+            background-color: #1e3a8a;
+            color: white;
+            text-align: center;
+            padding: 1em;
+            margin-top: 2em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Biblioteca del League of Legends</h1>
+        <div class="dropdown-container">
+            <select id="version-selector">
+                <option value="15.1.1">15.1.1</option>
+                <option value="5.1.1">5.1.1</option>
+            </select>
+            <select id="language-selector">
+                <option value="es_ES">Español</option>
+                <option value="en_US">English</option>
+            </select>
+            <select id="role-selector">
+                <option value="Nothing">Elegir rol:</option>
+                <option value="Assassin">Asesino</option>
+                <option value="Marksman">Tirador</option>
+                <option value="Tank">Tanque</option>
+                <option value="Mage">Mago</option>
+                <option value="Support">Soporte</option>
+                <option value="Fighter">Luchador</option>
+            </select>
+        </div>
+    </header>
+
+    <main>
+        <section class="search-section">
+            <div>
+                <label for="search">Buscar Campeón</label>
+                <input type="text" id="search" placeholder="Escribe el nombre del campeón">
+            </div>
+        </section>
+
+        <section id="results">
+            <h2>Resultados</h2>
+            <ul id="results-list"></ul>
+        </section>
+
+        <section id="champion-details" style="display: none;">
+            <h2>Detalles del campeón</h2>
+            <div id="details-content"></div>
+        </section>
+        
+
+    </main>
+
+    <footer>
+        <p>Ivan Almendros y Daniel Ortiz</p>
+    </footer>
+
+    <script>
+        $(document).ready(function () {
+            let version = "15.1.1";
+            let language = "es_ES";
+            const BASE_URL = "https://ddragon.leagueoflegends.com/cdn/";
+            let champions = [];
+            let CampeonesFiltrados = [];
+    
+            function Obtener_Campeones() {
+                const url = `${BASE_URL}${version}/data/${language}/champion.json`;
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    success: function (data) {
+                        champions = Object.values(data.data);
+                        CampeonesFiltrados = champions; // Inicialmente muestra todos
+                        Autocompletado();
+                        MostrarResultados(CampeonesFiltrados);
+                    },
+                    error: function () {
+                        alert('Error al cargar los datos de los campeones.');
+                    }
+                });
+            }
+    
+            function Autocompletado() {
+                $("#search").on("input", function () {
+                    const query = $(this).val().toLowerCase();
+                    const role = $("#role-selector").val();
+                    FiltrarCampeones(query, role);
+                });
+    
+                $("#role-selector").on("change", function () {
+                    const query = $("#search").val().toLowerCase();
+                    const role = $(this).val();
+                    FiltrarCampeones(query, role);
+                });
+            }
+    
+            function FiltrarCampeones(query, role) {
+                CampeonesFiltrados = champions.filter(champion => {
+                    const matchesQuery = champion.name.toLowerCase().includes(query);
+                    const matchesRole = role === "" || role === "Nothing" || champion.tags.includes(role);
+                    return matchesQuery && matchesRole;
+                });
+                MostrarResultados(CampeonesFiltrados);
+            }
+    
+            function MostrarResultados(data) {
+                const resultsList = $('#results-list');
+                resultsList.empty();
+    
+
+
+                if (!data.length) {
+                    if(language === "es_ES"){
+                        resultsList.append('<li>No se encontraron campeones.</li>');
+                        return;
+                    }else{
+                        resultsList.append('<li>No champions were found.</li>');
+                    return;
+                    }
+                    
+                }
+    
+                data.forEach(champion => {
+                    resultsList.append(`
+                        <li data-id="${champion.id}">
+                            <img src="${BASE_URL}${version}/img/champion/${champion.id}.png" alt="${champion.name}" style="width:50px;height:50px;">
+                            <div>
+                                <strong>${champion.name}</strong><br>
+                                <small>${champion.title}</small>
+                            </div>
+                        </li>
+                    `);
+                });
+    
+                $('#results-list li').on('click', function () {
+                    const championId = $(this).data('id');
+                    ActualizarDetallesCampeon(championId);
+                });
+            }
+    
+            function ActualizarDetallesCampeon(championId) {
+                const url = `${BASE_URL}${version}/data/${language}/champion/${championId}.json`;
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    success: function (data) {
+                        const champion = data.data[championId];
+                        MostrarDetallesCampeones(champion);
+                    },
+                    error: function () {
+                        alert('Error al cargar los detalles del campeón.');
+                    }
+                });
+            }
+    
+            function MostrarDetallesCampeones(champion) {
+                const detailsContent = $('#details-content');
+                detailsContent.empty();
+    
+                if(language === "es_ES"){
+                    
+                    detailsContent.append(`
+                    <h3>${champion.name} - ${champion.title}</h3>
+                    <img src="${BASE_URL}${version}/img/champion/${champion.id}.png" alt="${champion.name}" style="width:100px;height:100px;">
+                    <p>${champion.lore}</p>
+                    <h4>Habilidades:</h4>
+                    <ul>
+                        ${Object.values(champion.spells).map(spell => `<li><strong>${spell.name}:</strong> ${spell.description}</li>`).join('')}
+                    </ul>
+                `);
+                    
+                }else{
+                    
+                    detailsContent.append(`
+                    <h3>${champion.name} - ${champion.title}</h3>
+                    <img src="${BASE_URL}${version}/img/champion/${champion.id}.png" alt="${champion.name}" style="width:100px;height:100px;">
+                    <p>${champion.lore}</p>
+                    <h4>Habilities:</h4>
+                    <ul>
+                        ${Object.values(champion.spells).map(spell => `<li><strong>${spell.name}:</strong> ${spell.description}</li>`).join('')}
+                    </ul>
+                `);
+
+                }
+
+
+                
+    
+                $('#champion-details').show();
+                document.getElementById('champion-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+    
+            $('#version-selector').on('change', function () {
+                version = $(this).val();
+                Obtener_Campeones();
+            });
+    
+            $('#language-selector').on('change', function () {
+                language = $(this).val();
+                updateLanguage();
+                ActualizarRolesSelector(); 
+                Obtener_Campeones();
+            });
+    
+            function ActualizarRolesSelector() {
+                const roles = {
+                    en_US: {
+                        Nothing: "Choose role:",
+                        Assassin: "Assassin",
+                        Marksman: "Marksman",
+                        Tank: "Tank",
+                        Mage: "Mage",
+                        Support: "Support",
+                        Fighter: "Fighter",
+                    },
+                    es_ES: {
+                        Nothing: "Elegir rol:",
+                        Assassin: "Asesino",
+                        Marksman: "Tirador",
+                        Tank: "Tanque",
+                        Mage: "Mago",
+                        Support: "Soporte",
+                        Fighter: "Luchador",
+                    },
+                };
+            
+                const currentRoles = roles[language];
+                const roleSelector = $("#role-selector");
+            
+                roleSelector.empty();
+            
+                Object.keys(currentRoles).forEach(role => {
+                    roleSelector.append(`<option value="${role}">${currentRoles[role]}</option>`);
+                });
+            }
+
+            function updateLanguage() {
+                if (language === "en_US") {
+                    $("header h1").text("League of Legends Library");
+                    $(".search-section label").text("Search Champion");
+                    $("#search").attr("placeholder", "Enter champion name");
+                    $("h2:contains('Resultados')").text("Results");
+                    $("h2:contains('Detalles del campeón')").text("Champion Details");
+                } else if (language === "es_ES") {
+                    $("header h1").text("Biblioteca del League of Legends");
+                    $(".search-section label").text("Buscar campeón");
+                    $("#search").attr("placeholder", "Escribe el nombre del campeón");
+                    $("h2:contains('Results')").text("Resultados");
+                    $("h2:contains('Champion Details')").text("Detalles del campeón");
+                }
+            }
+    
+            Obtener_Campeones();
+        });
+    </script>
+    
+</body>
+</html>
